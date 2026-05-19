@@ -11,7 +11,10 @@
     }"
   >
     <div class="avatar-inner">
-      <img :key="`${character}-${emotion}`" :src="imageSrc" :alt="character + ' Avatar'" class="avatar-image" />
+      <picture>
+        <source :key="`${character}-${emotion}-webp`" :srcset="webpSrc" type="image/webp" />
+        <img :key="`${character}-${emotion}`" :src="imageSrc" :alt="character + ' Avatar'" class="avatar-image" />
+      </picture>
     </div>
     
     <!-- 装饰性元素 -->
@@ -170,10 +173,17 @@ const imageSrc = computed(() => {
 
 // 预加载两个角色的核心图片，防止切换时闪烁
 const preloadImages = [
+  '/image/Asuka/happy.webp',
   '/image/Asuka/happy.png',
+  '/image/qian/normal.webp',
   '/image/qian/normal.png',
+  '/image/qian/happy.webp',
   '/image/qian/happy.png'
 ]
+
+const webpSrc = computed(() => {
+  return imageSrc.value.replace(/\.(png|jpe?g)$/i, '.webp')
+})
 </script>
 
 <style scoped>

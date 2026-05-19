@@ -215,7 +215,7 @@
           </div>
           <div class="tool-desc">拍照识别物/试卷题目解析<br>植物识别 / 文档扫描</div>
           <button class="tool-btn">立即使用</button>
-          <img src="/image/campusAsuka/微信图片_20260517235340_738_357.png" alt="sticker" class="tool-sticker" />
+          <img src="/image/campusAsuka/微信图片_20260517235340_738_357.png" alt="sticker" class="tool-sticker" loading="lazy" decoding="async" />
         </div>
         <div class="tool-card campus-panel">
           <div class="tool-header">
@@ -224,7 +224,7 @@
           </div>
           <div class="tool-desc">查看本周课程安排<br>查询教室 / 考勤查询</div>
           <button class="tool-btn">查看课程表</button>
-          <img src="/image/campusAsuka/微信图片_20260517235341_739_357.png" alt="sticker" class="tool-sticker" />
+          <img src="/image/campusAsuka/微信图片_20260517235341_739_357.png" alt="sticker" class="tool-sticker" loading="lazy" decoding="async" />
         </div>
         <div class="tool-card campus-panel">
           <div class="tool-header">
@@ -233,7 +233,7 @@
           </div>
           <div class="tool-desc">中英互译 / 日语互译<br>多语种精准翻译</div>
           <button class="tool-btn">开始翻译</button>
-          <img src="/image/campusAsuka/微信图片_20260517235348_743_357.png" alt="sticker" class="tool-sticker" />
+          <img src="/image/campusAsuka/微信图片_20260517235348_743_357.png" alt="sticker" class="tool-sticker" loading="lazy" decoding="async" />
         </div>
         <div class="tool-card campus-panel">
           <div class="tool-header">
@@ -242,7 +242,7 @@
           </div>
           <div class="tool-desc">论文 / 文章 / PPT 总结<br>重点提炼 / 思维导图</div>
           <button class="tool-btn">上传文档</button>
-          <img src="/image/campusAsuka/微信图片_20260517235349_744_357.png" alt="sticker" class="tool-sticker" />
+          <img src="/image/campusAsuka/微信图片_20260517235349_744_357.png" alt="sticker" class="tool-sticker" loading="lazy" decoding="async" />
         </div>
         <div class="tool-card campus-panel">
           <div class="tool-header">
@@ -251,7 +251,7 @@
           </div>
           <div class="tool-desc">语音输入 / 语音问答<br>中英互译对话</div>
           <button class="tool-btn">开始对话</button>
-          <img src="/image/campusAsuka/微信图片_20260517235352_745_357.png" alt="sticker" class="tool-sticker" />
+          <img src="/image/campusAsuka/微信图片_20260517235352_745_357.png" alt="sticker" class="tool-sticker" loading="lazy" decoding="async" />
         </div>
         <div class="tool-card campus-panel">
           <div class="tool-header">
@@ -260,7 +260,7 @@
           </div>
           <div class="tool-desc">连接更多 API 能力<br>解锁无限可能</div>
           <button class="tool-btn">前往 API 中心</button>
-          <img src="/image/campusAsuka/微信图片_20260517235405_747_357.png" alt="sticker" class="tool-sticker" />
+          <img src="/image/campusAsuka/微信图片_20260517235405_747_357.png" alt="sticker" class="tool-sticker" loading="lazy" decoding="async" />
         </div>
       </div>
     </footer>

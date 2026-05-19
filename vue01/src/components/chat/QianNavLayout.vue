@@ -55,7 +55,7 @@
         <div class="user-pill" @click="$emit('switch-character', 'Asuka')">
           <img src="/image/qian/happy.png" alt="avatar" class="user-thumb" />
           <div class="user-meta">
-            <div class="user-name">花语同学</div>
+            <div class="user-name">千千同学</div>
             <div class="user-lv">Lv.20</div>
           </div>
           <span class="user-arrow">⌄</span>
@@ -69,10 +69,10 @@
           <div class="portrait-stickers left">♥</div>
           <div class="portrait-stickers right">✿</div>
           <div class="portrait-frame">
-            <img src="/image/qian/normal.png" alt="花语同学" class="portrait-img" />
+            <img src="/image/qian/normal.png" alt="千千同学" class="portrait-img" />
           </div>
           <div class="profile-name-row">
-            <div class="profile-name">花语同学</div>
+            <div class="profile-name">千千同学</div>
             <span class="profile-tag">AI 助手</span>
           </div>
           <div class="profile-desc">你的花艺学伴 & 生活小助手</div>
@@ -118,7 +118,7 @@
             <div class="bouquet-count">12</div>
             <div class="bouquet-unit">束</div>
           </div>
-          <img src="/image/qian/wink.png" alt="flower sticker" class="bouquet-sticker" />
+          <img src="/image/qian/wink.png" alt="flower sticker" class="bouquet-sticker" loading="lazy" decoding="async" />
         </section>
       </aside>
 
@@ -144,7 +144,7 @@
                 />
                 <div class="search-desc">{{ activeRoute.startAddress }}</div>
               </div>
-              <button class="search-arrow-btn" @click="startKeyword = defaultStart.address">⌖</button>
+              <button class="search-arrow-btn" @click="locateMe">⌖</button>
             </div>
 
             <button class="swap-btn" @click="swapAddresses">⇄</button>
@@ -198,7 +198,7 @@
             </div>
 
             <div class="route-bubble">
-              <img src="/image/qian/curious.png" alt="route sticker" class="bubble-avatar" />
+              <img src="/image/qian/curious.png" alt="route sticker" class="bubble-avatar" loading="lazy" decoding="async" />
               <div class="bubble-copy">{{ activeRoute.bubble }}</div>
             </div>
           </div>
@@ -326,7 +326,7 @@
               </div>
             </div>
           </div>
-          <img src="/image/qian/expect.png" alt="bouquet" class="route-corner-sticker" />
+          <img src="/image/qian/expect.png" alt="bouquet" class="route-corner-sticker" loading="lazy" decoding="async" />
         </section>
       </aside>
     </main>
@@ -341,7 +341,7 @@
             <div class="tool-desc">{{ tool.desc }}</div>
             <div class="tool-api">{{ tool.api }}</div>
           </div>
-          <img :src="tool.sticker" :alt="tool.name" class="tool-sticker" />
+          <img :src="tool.sticker" :alt="tool.name" class="tool-sticker" loading="lazy" decoding="async" />
         </div>
       </div>
     </footer>
@@ -356,6 +356,14 @@ const props = defineProps({
   currentPage: {
     type: String,
     default: 'nav'
+  },
+  geoLocation: {
+    type: Object,
+    default: () => ({})
+  },
+  geoSyncKey: {
+    type: Number,
+    default: 0
   }
 })
 
@@ -791,6 +799,60 @@ const initThemeMap = async (force = false) => {
     mapErrorDetail.value = error?.message || '请检查高德地图 Key 或浏览器控制台报错'
   }
 }
+
+const locateMe = async () => {
+  mapStatus.value = '正在获取位置...'
+  try {
+    const AMap = await initServices()
+    const geolocation = new AMap.Geolocation({
+      enableHighAccuracy: true,
+      timeout: 10000,
+      zoomToAccuracy: true
+    })
+
+    geolocation.getCurrentPosition(async (status, result) => {
+      if (status === 'complete') {
+        const { position, formattedAddress } = result
+        startKeyword.value = formattedAddress || '我的位置'
+        if (mapInstance.value) {
+          mapInstance.value.setZoomAndCenter(16, [position.lng, position.lat])
+        }
+        mapStatus.value = '位置已更新'
+        await planActualRoute()
+      } else {
+        console.warn('Qian Geolocation failed, trying IP:', result)
+        geolocation.getCityInfo((cityStatus, cityResult) => {
+          if (cityStatus === 'complete') {
+            startKeyword.value = cityResult.city
+            mapStatus.value = '已通过IP定位'
+          } else {
+            mapStatus.value = '定位失败'
+          }
+        })
+      }
+    })
+  } catch (error) {
+    console.error('Qian Geolocation error:', error)
+    mapStatus.value = '定位不可用'
+  }
+}
+
+watch(() => props.geoSyncKey, async () => {
+  const longitude = Number(props.geoLocation?.longitude)
+  const latitude = Number(props.geoLocation?.latitude)
+  const address = props.geoLocation?.address || props.geoLocation?.name || props.geoLocation?.city
+
+  if (!Number.isFinite(longitude) || !Number.isFinite(latitude) || !address) return
+
+  startKeyword.value = address
+  activeRoute.startAddress = address
+
+  if (mapInstance.value) {
+    mapInstance.value.setZoomAndCenter(16, [longitude, latitude])
+  }
+
+  await planActualRoute()
+}, { immediate: true })
 
 const focusRoute = () => {
   if (!mapInstance.value) return

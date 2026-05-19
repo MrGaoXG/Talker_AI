@@ -55,7 +55,7 @@
         <div class="user-pill" @click="$emit('switch-character', 'Asuka')">
           <img src="/image/qian/happy.png" alt="avatar" class="user-thumb" />
           <div class="user-meta">
-            <div class="user-name">花语同学</div>
+            <div class="user-name">千千同学</div>
             <div class="user-lv">Lv.20</div>
           </div>
           <span class="user-arrow">⌄</span>
@@ -69,10 +69,10 @@
           <div class="portrait-stickers left">♥</div>
           <div class="portrait-stickers right">✿</div>
           <div class="portrait-frame">
-            <img src="/image/qian/normal.png" alt="花语同学" class="portrait-img" />
+            <img src="/image/qian/normal.png" alt="千千同学" class="portrait-img" />
           </div>
           <div class="profile-name-row">
-            <div class="profile-name">花语同学</div>
+            <div class="profile-name">千千同学</div>
             <span class="profile-tag">AI 助手</span>
           </div>
           <div class="profile-desc">你的花艺学伴 & 生活小助手</div>
@@ -118,7 +118,7 @@
             <div class="bouquet-count">12</div>
             <div class="bouquet-unit">束</div>
           </div>
-          <img src="/image/qian/expect.png" alt="flower sticker" class="bouquet-sticker" />
+          <img src="/image/qian/expect.png" alt="flower sticker" class="bouquet-sticker" loading="lazy" decoding="async" />
         </section>
       </aside>
 
@@ -216,7 +216,7 @@
                   <div class="art-note-copy">{{ heroBubble }}</div>
                 </div>
                 <div class="hero-sticker-halo"></div>
-                <img src="/image/qian/happy.png" alt="qian sticker" class="hero-sticker" />
+                <img src="/image/qian/happy.png" alt="qian sticker" class="hero-sticker" loading="lazy" decoding="async" />
               </div>
             </div>
           </div>
@@ -279,7 +279,7 @@
                 <div class="tool-name">{{ tool.name }}</div>
                 <div class="tool-desc">{{ tool.desc }}</div>
               </div>
-              <img :src="tool.sticker" :alt="tool.name" class="tool-sticker" />
+              <img :src="tool.sticker" :alt="tool.name" class="tool-sticker" loading="lazy" decoding="async" />
             </div>
           </div>
         </section>

@@ -25,6 +25,11 @@
       </nav>
 
       <div class="top-actions">
+        <button class="top-locate-btn" :disabled="locatingUser" title="获取当前位置" @click="requestAmapGeolocation">
+          <span class="locate-icon" :class="{ rotating: locatingUser }">⌖</span>
+          <span class="locate-text">{{ locatingUser ? '定位中...' : '定位' }}</span>
+        </button>
+        <div class="top-location-pill" :title="currentGeoText">{{ currentGeoText }}</div>
         <div class="character-switch">
           <button
             :class="['switch-btn', { active: currentCharacter === 'Asuka' }]"
@@ -423,6 +428,7 @@
                       class="nav-search-input"
                       type="text"
                       placeholder="请输入起点"
+                      @keydown.enter.prevent="planAsukaRoute"
                     />
                   </div>
                   <div class="nav-search-sep"></div>
@@ -433,9 +439,12 @@
                       class="nav-search-input"
                       type="text"
                       placeholder="请输入终点"
+                      @keydown.enter.prevent="planAsukaRoute"
                     />
                   </div>
-                  <button class="nav-go-btn">开始导航</button>
+                  <button class="nav-go-btn" :disabled="amapPlanning" @click="planAsukaRoute">
+                    {{ amapPlanning ? '规划中...' : '开始导航' }}
+                  </button>
                 </div>
 
                 <div class="nav-map-large panel-frame">
@@ -447,8 +456,8 @@
                     </div>
                   </div>
                   <div class="nav-map-overlay">
-                    <div class="nav-map-badge">目的地: 上海国际会议中心</div>
-                    <div class="nav-map-chip">ETA 32 min</div>
+                    <div class="nav-map-badge">目的地: {{ amapRouteSummary.destination }}</div>
+                    <div class="nav-map-chip">{{ amapRouteSummary.etaLabel }}</div>
                   </div>
                 </div>
 
@@ -459,10 +468,10 @@
                       <span class="mini-tag">ROUTE</span>
                     </div>
                     <div class="mini-body emphasis">
-                      <div>16.8 km</div>
-                      <div>预计 32 分钟</div>
+                      <div>{{ amapRouteSummary.distanceText }}</div>
+                      <div>{{ amapRouteSummary.durationText }}</div>
                     </div>
-                    <div class="mini-foot">延安高架 → 世纪大道 → 目的地</div>
+                    <div class="mini-foot">{{ amapRouteSummary.pathName }}</div>
                   </div>
 
                   <div class="mini-card panel-frame">
@@ -471,11 +480,11 @@
                       <span class="mini-tag">GPS</span>
                     </div>
                     <div class="mini-body">
-                      <div>当前位置: 上海市浦东新区</div>
-                      <div>经纬度: 121.4737, 31.2304</div>
-                      <div>定位精度: ±15m</div>
+                      <div>当前位置: {{ amapRouteSummary.startAddress }}</div>
+                      <div>经纬度: {{ amapRouteSummary.startCoordText }}</div>
+                      <div>定位精度: 以高德解析结果为准</div>
                     </div>
-                    <button class="card-btn">刷新定位</button>
+                    <button class="card-btn" @click="fillAsukaCurrentLocation">使用默认起点</button>
                   </div>
                 </div>
               </div>
@@ -487,28 +496,19 @@
                     <span class="mini-tag">STEP</span>
                   </div>
                   <div class="nav-step-list">
-                    <div class="nav-step-item active">
-                      <div class="nav-step-index">01</div>
+                    <div
+                      v-for="(step, index) in amapRouteSummary.steps"
+                      :key="`${index}-${step.title}`"
+                      class="nav-step-item"
+                      :class="{ active: index === 0 }"
+                    >
+                      <div class="nav-step-index">{{ String(index + 1).padStart(2, '0') }}</div>
                       <div class="nav-step-copy">
-                        <div>从当前位置出发</div>
-                        <span>沿陆家嘴环路向西北行驶</span>
+                        <div>{{ step.title }}</div>
+                        <span>{{ step.desc }}</span>
                       </div>
                     </div>
-                    <div class="nav-step-item">
-                      <div class="nav-step-index">02</div>
-                      <div class="nav-step-copy">
-                        <div>进入世纪大道</div>
-                        <span>保持直行约 4.2 公里</span>
-                      </div>
-                    </div>
-                    <div class="nav-step-item">
-                      <div class="nav-step-index">03</div>
-                      <div class="nav-step-copy">
-                        <div>接近终点</div>
-                        <span>右转进入滨江大道到达目的地</span>
-                      </div>
-                    </div>
-                </div>
+                  </div>
                 </div>
 
                 <div class="mini-card panel-frame nav-ops-card">
@@ -517,12 +517,12 @@
                     <span class="mini-tag">OPS</span>
                   </div>
                   <div class="quick-grid nav-op-grid">
-                    <button class="quick-chip">切换驾车</button>
-                    <button class="quick-chip">切换步行</button>
+                    <button class="quick-chip" :class="{ active: asukaNavMode === 'driving' }" @click="setAsukaNavMode('driving')">切换驾车</button>
+                    <button class="quick-chip" :class="{ active: asukaNavMode === 'walking' }" @click="setAsukaNavMode('walking')">切换步行</button>
                     <button class="quick-chip">附近停车</button>
-                    <button class="quick-chip">发送路线</button>
+                    <button class="quick-chip" @click="focusAsukaRoute">聚焦路线</button>
                   </div>
-                  <div class="nav-side-note">已预留高德地图检索、定位、驾车路线规划接口。</div>
+                  <div class="nav-side-note">当前模式：{{ asukaNavMode === 'driving' ? '驾车规划' : '步行规划' }}，输入起终点后会直接调用高德真实路线。</div>
                 </div>
               </div>
             </div>
@@ -564,6 +564,9 @@
                     />
                     <button class="weather-city-btn" type="submit" :disabled="weatherLoading">
                       确认切换
+                    </button>
+                    <button class="weather-city-btn locate-btn" type="button" :disabled="weatherLoading" @click="requestAmapGeolocation">
+                      定位
                     </button>
                   </form>
                   <div v-if="weatherSuggestions.length" class="weather-suggestion-list weather-suggestion-inline">
@@ -961,7 +964,7 @@
               <div class="card-time">14:42 更新</div>
             </div>
             <div class="radar-map-container">
-              <img src="/image/qian/backgroun1.png" alt="radar placeholder" class="radar-placeholder" />
+              <img src="/image/qian/backgroun1.png" alt="radar placeholder" class="radar-placeholder" loading="lazy" decoding="async" />
               <div class="radar-overlay">
                 <div class="radar-scan"></div>
                 <div class="location-dot" style="left: 60%; top: 40%"></div>
@@ -1075,6 +1078,8 @@
     <QianNavLayout
       v-else-if="qianPage === 'nav'"
       :current-page="qianPage"
+      :geo-location="weatherLocation"
+      :geo-sync-key="geoSyncKey"
       @page-change="qianPage = $event"
       @switch-character="(char) => currentCharacter = char || 'Asuka'"
     />
@@ -1153,6 +1158,13 @@ import QianScheduleLayout from './components/chat/QianScheduleLayout.vue'
 import CampusLayout from './components/chat/CampusLayout.vue'
 import { loadAmapScript } from './utils/amap'
 
+// #region debug-point D:reporter
+const reportAmapAppDebug = () => {
+  // Silent in production
+  // fetch('http://127.0.0.1:7777/event', ...)
+}
+// #endregion
+
 // 分角色存储对话记录
 const messagesMap = ref({
   Asuka: [],
@@ -1171,12 +1183,47 @@ const isTyping = ref(false)
 const currentCharacter = ref('Asuka') // 角色状态：'Asuka', 'qian' 或 'campus'
 const qianPage = ref('home')
 const asukaPage = ref('home')
+const ASUKA_DEFAULT_START = {
+  name: '上海市浦东新区陆家嘴环路1000号',
+  address: '上海市浦东新区陆家嘴环路1000号',
+  position: [121.4737, 31.2304]
+}
+const ASUKA_DEFAULT_END = {
+  name: '上海国际会议中心',
+  address: '上海国际会议中心',
+  position: [121.4905, 31.2397]
+}
 const amapContainerRef = ref(null)
 const amapInstance = ref(null)
 const amapStatus = ref('地图待连接')
 const amapErrorDetail = ref('')
-const navStart = ref('上海市浦东新区 陆家嘴环路1000号')
-const navEnd = ref('上海国际会议中心')
+const navStart = ref(ASUKA_DEFAULT_START.address)
+const navEnd = ref(ASUKA_DEFAULT_END.address)
+const amapPlanning = ref(false)
+const asukaNavMode = ref('driving')
+const amapGeocoderRef = ref(null)
+const amapPlaceSearchRef = ref(null)
+const amapWalkingRef = ref(null)
+const amapDrivingRef = ref(null)
+const amapPlanTraceSeed = ref(0)
+const amapRouteSummary = ref({
+  destination: ASUKA_DEFAULT_END.name,
+  etaLabel: 'ETA --',
+  distanceText: '--',
+  durationText: '预计 -- 分钟',
+  pathName: `${ASUKA_DEFAULT_START.name} → ${ASUKA_DEFAULT_END.name}`,
+  startAddress: ASUKA_DEFAULT_START.address,
+  startCoordText: `${ASUKA_DEFAULT_START.position[0]}, ${ASUKA_DEFAULT_START.position[1]}`,
+  steps: [
+    { title: '等待路径规划', desc: '请输入起点和终点后点击开始导航。' },
+    { title: '支持驾车与步行', desc: '切换模式后会自动重新规划。' },
+    { title: '地图联动展示', desc: '规划成功后会自动聚焦整条路线。' }
+  ]
+})
+const amapRouteOverlays = {
+  markers: [],
+  polyline: null
+}
 const WEATHER_COORDS = {
   latitude: 31.2304,
   longitude: 121.4737,
@@ -1196,6 +1243,8 @@ const weatherLoading = ref(false)
 const weatherError = ref('')
 const weatherLastSyncedAt = ref(0)
 const weatherLocation = ref({ ...WEATHER_COORDS })
+const locatingUser = ref(false)
+const geoSyncKey = ref(0)
 const weatherCityInput = ref(WEATHER_COORDS.city)
 const weatherSuggestions = ref([])
 const weatherToday = ref({
@@ -1232,6 +1281,7 @@ const airQuality = ref({
 })
 const weatherIndices = ref([])
 const weatherAlerts = ref([])
+const currentGeoText = computed(() => weatherLocation.value.address || weatherLocation.value.name || weatherLocation.value.city || '未定位')
 const scheduleFormMessage = ref('设置标题、日期和时间后即可添加。')
 const scheduleDraft = ref(createScheduleDraft())
 const scheduleItems = ref([])
@@ -1877,6 +1927,71 @@ function loadWeatherLocation() {
     weatherLocation.value = { ...WEATHER_COORDS }
   }
 }
+
+const parseGeolocationPayload = (result = {}) => {
+  const position = result?.position
+  const longitude = Number(position?.lng)
+  const latitude = Number(position?.lat)
+
+  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+    throw new Error('定位结果缺少有效坐标')
+  }
+
+  const addressComponent = result?.addressComponent || {}
+  const city = addressComponent.city || addressComponent.province || addressComponent.district || '未知位置'
+  const district = addressComponent.district || ''
+  const formattedAddress = result?.formattedAddress || [
+    addressComponent.province,
+    addressComponent.city,
+    addressComponent.district,
+    addressComponent.township,
+    addressComponent.street,
+    addressComponent.streetNumber
+  ].filter(Boolean).join('')
+
+  return {
+    latitude,
+    longitude,
+    city: `${city} ${district}`.trim(),
+    name: formattedAddress || city,
+    address: formattedAddress || city
+  }
+}
+
+const reverseGeocodeAmapLocation = async ({ longitude, latitude, fallback = {} }) => {
+  await ensureAmapServices()
+
+  return new Promise((resolve) => {
+    if (!amapGeocoderRef.value) {
+      resolve(fallback)
+      return
+    }
+
+    amapGeocoderRef.value.getAddress([longitude, latitude], (status, result) => {
+      if (status !== 'complete') {
+        resolve(fallback)
+        return
+      }
+
+      const regeocode = result?.regeocode || {}
+      const addressComponent = regeocode.addressComponent || {}
+      const cityValue = Array.isArray(addressComponent.city)
+        ? addressComponent.city[0]
+        : addressComponent.city
+      const city = cityValue || addressComponent.province || addressComponent.district || fallback.city || '未知位置'
+      const district = addressComponent.district || ''
+      const formattedAddress = regeocode.formattedAddress || fallback.address || fallback.name || city
+
+      resolve({
+        latitude,
+        longitude,
+        city: `${city} ${district}`.trim(),
+        name: formattedAddress,
+        address: formattedAddress
+      })
+    })
+  })
+}
 const scheduleDateLabel = computed(() => {
   return new Date().toLocaleDateString('zh-CN', {
     year: 'numeric',
@@ -2042,27 +2157,676 @@ const scrollToBottom = async () => {
   }
 }
 
+const sanitizeAmapInstruction = (text) => {
+  return String(text || '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+const formatAmapDistance = (meters) => {
+  const distance = Number(meters || 0)
+  if (distance >= 1000) {
+    return `${Number((distance / 1000).toFixed(distance >= 10000 ? 0 : 1))} km`
+  }
+  return `${Math.max(1, Math.round(distance))} m`
+}
+
+const isValidAmapCoord = (coord) => {
+  return Array.isArray(coord) && coord.length >= 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number' && !isNaN(coord[0]) && !isNaN(coord[1])
+}
+
+const extractAmapPathPoints = (steps = [], route = {}) => {
+  const path = []
+
+  const pushPoint = (point) => {
+    if (!point) return
+    let lng, lat
+    if (Array.isArray(point) && point.length >= 2) {
+      lng = point[0]
+      lat = point[1]
+    } else if (typeof point.lng === 'number' && typeof point.lat === 'number') {
+      lng = point.lng
+      lat = point.lat
+    } else if (typeof point.getLng === 'function' && typeof point.getLat === 'function') {
+      lng = point.getLng()
+      lat = point.getLat()
+    }
+
+    if (typeof lng === 'number' && typeof lat === 'number' && !isNaN(lng) && !isNaN(lat)) {
+      path.push([lng, lat])
+    }
+  }
+
+  steps.forEach((step) => {
+    if (Array.isArray(step.path)) {
+      step.path.forEach(pushPoint)
+    }
+    if (Array.isArray(step.tmcs)) {
+      step.tmcs.forEach((tmc) => {
+        if (Array.isArray(tmc.path)) {
+          tmc.path.forEach(pushPoint)
+        }
+      })
+    }
+  })
+
+  if (!path.length && Array.isArray(route.path)) {
+    route.path.forEach(pushPoint)
+  }
+
+  return path
+}
+
+const clearAmapRouteOverlays = () => {
+  if (!amapInstance.value) return
+  const overlays = [...amapRouteOverlays.markers]
+  if (amapRouteOverlays.polyline) {
+    overlays.push(amapRouteOverlays.polyline)
+  }
+  if (overlays.length) {
+    amapInstance.value.remove(overlays)
+  }
+  amapRouteOverlays.markers = []
+  amapRouteOverlays.polyline = null
+}
+
+const ensureAmapServices = async () => {
+  const AMap = await loadAmapScript()
+  // #region debug-point D:service-constructors
+  reportAmapAppDebug('D', 'ensureAmapServices received AMap', {
+    hasMapCtor: Boolean(AMap?.Map),
+    hasGeocoderCtor: Boolean(AMap?.Geocoder),
+    hasPlaceSearchCtor: Boolean(AMap?.PlaceSearch),
+    hasWalkingCtor: Boolean(AMap?.Walking),
+    hasDrivingCtor: Boolean(AMap?.Driving)
+  })
+  // #endregion
+  if (!amapGeocoderRef.value) {
+    amapGeocoderRef.value = new AMap.Geocoder()
+  }
+  if (!amapPlaceSearchRef.value) {
+    amapPlaceSearchRef.value = new AMap.PlaceSearch({
+      city: '全国',
+      citylimit: false,
+      pageSize: 1
+    })
+  }
+  if (!amapWalkingRef.value) {
+    amapWalkingRef.value = new AMap.Walking()
+  }
+  if (!amapDrivingRef.value) {
+    amapDrivingRef.value = new AMap.Driving()
+  }
+  // #region debug-point D:service-created
+  reportAmapAppDebug('D', 'ensureAmapServices instances ready', {
+    hasGeocoderInstance: Boolean(amapGeocoderRef.value),
+    hasPlaceSearchInstance: Boolean(amapPlaceSearchRef.value),
+    hasWalkingInstance: Boolean(amapWalkingRef.value),
+    hasDrivingInstance: Boolean(amapDrivingRef.value),
+    hasSecurityConfig: Boolean(window._AMapSecurityConfig),
+    securityConfigKeys: Object.keys(window._AMapSecurityConfig || {})
+  })
+  // #endregion
+  return AMap
+}
+
+const resolveAmapKeyword = async (keyword, fallback = null) => {
+  const normalized = String(keyword || '').trim()
+  const traceId = `keyword-${Date.now()}-${++amapPlanTraceSeed.value}`
+  // #region debug-point A:keyword-entry
+  reportAmapAppDebug('A', 'resolveAmapKeyword entered', {
+    traceId,
+    normalized,
+    hasFallback: Boolean(fallback),
+    fallbackAddress: fallback?.address || ''
+  })
+  // #endregion
+  if (!normalized && fallback) {
+    // #region debug-point A:keyword-fallback-empty
+    reportAmapAppDebug('A', 'resolveAmapKeyword used fallback for empty keyword', {
+      traceId,
+      normalized,
+      fallbackAddress: fallback?.address || ''
+    })
+    // #endregion
+    return fallback
+  }
+  if (!normalized) {
+    throw new Error('请输入起点和终点')
+  }
+  if (fallback && (normalized === '当前位置' || normalized === fallback.address || normalized === fallback.name)) {
+    // #region debug-point A:keyword-fallback-match
+    reportAmapAppDebug('A', 'resolveAmapKeyword matched fallback directly', {
+      traceId,
+      normalized,
+      fallbackAddress: fallback.address,
+      fallbackName: fallback.name
+    })
+    // #endregion
+    return fallback
+  }
+
+  await ensureAmapServices()
+
+  const tryPlaceSearch = () =>
+    new Promise((resolve, reject) => {
+      const callbackWatchdog = window.setTimeout(() => {
+        // #region debug-point A:place-search-timeout
+        reportAmapAppDebug('A', 'resolveAmapKeyword place search callback pending after timeout', {
+          traceId,
+          normalized
+        })
+        // #endregion
+      }, 8000)
+      // #region debug-point A:place-search-dispatch
+      reportAmapAppDebug('A', 'resolveAmapKeyword dispatching place search', {
+        traceId,
+        normalized
+      })
+      // #endregion
+      amapPlaceSearchRef.value.search(normalized, (status, result) => {
+        window.clearTimeout(callbackWatchdog)
+        const poi = result?.poiList?.pois?.[0]
+        // #region debug-point A:place-search-callback
+        reportAmapAppDebug('A', 'resolveAmapKeyword place search callback', {
+          traceId,
+          normalized,
+          status,
+          info: result?.info || '',
+          infocode: result?.infocode || result?.infoCode || '',
+          resultKeys: Object.keys(result || {}).slice(0, 8),
+          poiCount: result?.poiList?.pois?.length || 0,
+          hasLocation: Boolean(poi?.location)
+        })
+        // #endregion
+        if (status === 'complete' && poi?.location) {
+          resolve({
+            name: poi.name || normalized,
+            address: poi.address ? `${poi.name} · ${poi.address}` : poi.name || normalized,
+            position: [poi.location.lng, poi.location.lat]
+          })
+          return
+        }
+        reject(new Error('place search miss'))
+      })
+    })
+
+  const tryGeocoder = () =>
+    new Promise((resolve, reject) => {
+      let settled = false
+      const callbackWatchdog = window.setTimeout(() => {
+        if (settled) return
+        settled = true
+        // #region debug-point C:geocoder-timeout
+        reportAmapAppDebug('C', 'resolveAmapKeyword geocoder callback pending after timeout', {
+          traceId,
+          normalized
+        })
+        // #endregion
+        reject(new Error(`地址解析超时：${normalized}，请尝试输入更完整的地址`))
+      }, 8000)
+      // #region debug-point A:geocoder-dispatch
+      reportAmapAppDebug('A', 'resolveAmapKeyword dispatching geocoder', {
+        traceId,
+        normalized
+      })
+      // #endregion
+      amapGeocoderRef.value.getLocation(normalized, (status, result) => {
+        if (settled) return
+        settled = true
+        window.clearTimeout(callbackWatchdog)
+        const geocode = result?.geocodes?.[0]
+        // #region debug-point A:geocoder-callback
+        reportAmapAppDebug('A', 'resolveAmapKeyword geocoder callback', {
+          traceId,
+          normalized,
+          status,
+          info: result?.info || '',
+          infocode: result?.infocode || result?.infoCode || '',
+          resultKeys: Object.keys(result || {}).slice(0, 8),
+          geocodeCount: result?.geocodes?.length || 0,
+          hasLocation: Boolean(geocode?.location)
+        })
+        // #endregion
+        if (status === 'complete' && geocode?.location) {
+          resolve({
+            name: normalized,
+            address: geocode.formattedAddress || normalized,
+            position: [geocode.location.lng, geocode.location.lat]
+          })
+          return
+        }
+        reject(new Error(`未找到地址：${normalized}`))
+      })
+    })
+
+  try {
+    const placeResult = await tryPlaceSearch()
+    // #region debug-point A:keyword-place-success
+    reportAmapAppDebug('A', 'resolveAmapKeyword resolved by place search', {
+      traceId,
+      normalized,
+      resolvedAddress: placeResult.address,
+      position: placeResult.position
+    })
+    // #endregion
+    return placeResult
+  } catch (error) {
+    // #region debug-point A:keyword-place-failed
+    reportAmapAppDebug('A', 'resolveAmapKeyword place search failed, fallback to geocoder', {
+      traceId,
+      normalized,
+      errorMessage: error?.message || '',
+      errorName: error?.name || ''
+    })
+    // #endregion
+    const geocodeResult = await tryGeocoder()
+    // #region debug-point A:keyword-geocoder-success
+    reportAmapAppDebug('A', 'resolveAmapKeyword resolved by geocoder', {
+      traceId,
+      normalized,
+      resolvedAddress: geocodeResult.address,
+      position: geocodeResult.position
+    })
+    // #endregion
+    return geocodeResult
+  }
+}
+
+const drawAmapRouteOverlay = async ({ path, start, end }) => {
+  if (!amapInstance.value) return
+  const AMap = await ensureAmapServices()
+  clearAmapRouteOverlays()
+
+  // 验证坐标有效性，防止 Pixel(NaN, NaN) 错误
+  if (!isValidAmapCoord(start) || !isValidAmapCoord(end)) {
+    console.error('Invalid start or end position for route overlay:', { start, end })
+    throw new Error('起止点坐标无效，无法在地图上显示')
+  }
+
+  const validPath = (path || []).filter(isValidAmapCoord)
+  if (validPath.length < 2) {
+    console.warn('Route path has insufficient valid points:', path)
+  }
+
+  const strokeColor = asukaNavMode.value === 'walking' ? '#ff9f78' : '#ff4b2a'
+  const startMarker = new AMap.Marker({
+    position: start,
+    title: '起点',
+    label: {
+      content: '<div class="asuka-amap-label">起点</div>',
+      direction: 'right',
+      offset: new AMap.Pixel(12, -4)
+    }
+  })
+  const endMarker = new AMap.Marker({
+    position: end,
+    title: '终点',
+    label: {
+      content: '<div class="asuka-amap-label end">终点</div>',
+      direction: 'right',
+      offset: new AMap.Pixel(12, -4)
+    }
+  })
+  const polyline = new AMap.Polyline({
+    path: validPath,
+    isOutline: true,
+    outlineColor: 'rgba(255,255,255,0.95)',
+    borderWeight: 4,
+    strokeColor,
+    strokeOpacity: 0.96,
+    strokeWeight: 7,
+    lineJoin: 'round',
+    lineCap: 'round',
+    showDir: true,
+    zIndex: 90
+  })
+
+  try {
+    amapInstance.value.add([polyline, startMarker, endMarker])
+    amapRouteOverlays.markers = [startMarker, endMarker]
+    amapRouteOverlays.polyline = polyline
+  } catch (err) {
+    console.error('Failed to add route overlays to map:', err)
+    throw new Error('无法在地图上绘制路径，请尝试刷新页面')
+  }
+}
+
+const updateAmapRouteSummary = ({ start, end, route, steps }) => {
+  const durationMinutes = Math.max(1, Math.round(Number(route.time || route.duration || 0) / 60))
+  const instructionList = steps
+    .map((step) => sanitizeAmapInstruction(step.instruction || step.road || step.assistant_action || step.action))
+    .filter(Boolean)
+    .slice(0, 4)
+
+  amapRouteSummary.value = {
+    destination: end.name,
+    etaLabel: `ETA ${durationMinutes} min`,
+    distanceText: formatAmapDistance(route.distance),
+    durationText: `预计 ${durationMinutes} 分钟`,
+    pathName: `${start.name} → ${end.name}`,
+    startAddress: start.address,
+    startCoordText: `${start.position[0].toFixed(4)}, ${start.position[1].toFixed(4)}`,
+    steps: instructionList.length
+      ? instructionList.map((instruction, index) => ({
+          title: instruction,
+          desc: index === instructionList.length - 1 ? `目的地：${end.name}` : `第 ${index + 1} 段导航`
+        }))
+      : [
+          { title: '从起点出发', desc: start.name },
+          { title: '沿推荐路线前进', desc: `预计 ${durationMinutes} 分钟` },
+          { title: '抵达终点', desc: end.name }
+        ]
+  }
+}
+
+const focusAsukaRoute = () => {
+  if (!amapInstance.value) return
+  const overlays = [...amapRouteOverlays.markers]
+  if (amapRouteOverlays.polyline) {
+    overlays.push(amapRouteOverlays.polyline)
+  }
+  if (overlays.length) {
+    amapInstance.value.setFitView(overlays, false, [72, 88, 88, 72])
+  }
+}
+
+const planAsukaRoute = async () => {
+  const traceId = `asuka-route-${Date.now()}-${++amapPlanTraceSeed.value}`
+  // #region debug-point C:plan-entry
+  reportAmapAppDebug('C', 'planAsukaRoute entered', {
+    traceId,
+    hasMapInstance: Boolean(amapInstance.value),
+    isPlanning: amapPlanning.value,
+    mode: asukaNavMode.value,
+    startKeyword: navStart.value,
+    endKeyword: navEnd.value,
+    currentStatus: amapStatus.value
+  })
+  // #endregion
+  if (!amapInstance.value || amapPlanning.value) {
+    // #region debug-point C:plan-early-return
+    reportAmapAppDebug('C', 'planAsukaRoute returned early', {
+      traceId,
+      hasMapInstance: Boolean(amapInstance.value),
+      isPlanning: amapPlanning.value
+    })
+    // #endregion
+    return
+  }
+
+  try {
+    amapPlanning.value = true
+    amapStatus.value = '路径规划中...'
+    amapErrorDetail.value = ''
+
+    const [start, end] = await Promise.all([
+      resolveAmapKeyword(navStart.value, ASUKA_DEFAULT_START),
+      resolveAmapKeyword(navEnd.value, ASUKA_DEFAULT_END)
+    ])
+    const service = asukaNavMode.value === 'walking' ? amapWalkingRef.value : amapDrivingRef.value
+    // #region debug-point B:service-selected
+    reportAmapAppDebug('B', 'planAsukaRoute selected navigation service', {
+      traceId,
+      mode: asukaNavMode.value,
+      hasService: Boolean(service),
+      hasWalkingInstance: Boolean(amapWalkingRef.value),
+      hasDrivingInstance: Boolean(amapDrivingRef.value),
+      startPosition: start.position,
+      endPosition: end.position
+    })
+    // #endregion
+
+    const result = await new Promise((resolve, reject) => {
+      const callbackWatchdog = window.setTimeout(() => {
+        // #region debug-point C:search-timeout
+        reportAmapAppDebug('C', 'planAsukaRoute search callback still pending after timeout', {
+          traceId,
+          mode: asukaNavMode.value,
+          startPosition: start.position,
+          endPosition: end.position
+        })
+        // #endregion
+      }, 10000)
+      // #region debug-point B:search-dispatch
+      reportAmapAppDebug('B', 'planAsukaRoute dispatching service.search', {
+        traceId,
+        mode: asukaNavMode.value,
+        startPosition: start.position,
+        endPosition: end.position
+      })
+      // #endregion
+      service.search(start.position, end.position, (status, payload) => {
+        window.clearTimeout(callbackWatchdog)
+        const route = payload?.routes?.[0] || payload?.route?.routes?.[0]
+        // #region debug-point C:search-callback
+        reportAmapAppDebug('C', 'planAsukaRoute service.search callback fired', {
+          traceId,
+          status,
+          hasPayload: Boolean(payload),
+          info: payload?.info || '',
+          infocode: payload?.infocode || payload?.infoCode || '',
+          payloadKeys: Object.keys(payload || {}).slice(0, 8),
+          hasRoute: Boolean(route),
+          routeCount: payload?.routes?.length || payload?.route?.routes?.length || 0
+        })
+        // #endregion
+        if (status !== 'complete' || !route) {
+          reject(new Error('高德路线规划失败，请尝试输入更具体的地址'))
+          return
+        }
+        const steps = route.steps || []
+        const path = extractAmapPathPoints(steps, route)
+        // #region debug-point D:route-resolved
+        reportAmapAppDebug('D', 'planAsukaRoute resolved route payload', {
+          traceId,
+          stepCount: steps.length,
+          pathPointCount: path.length,
+          routeDistance: route.distance || 0,
+          routeDuration: route.time || route.duration || 0
+        })
+        // #endregion
+        resolve({ route, steps, path: path.length ? path : [start.position, end.position] })
+      })
+    })
+
+    await drawAmapRouteOverlay({
+      path: result.path,
+      start: start.position,
+      end: end.position
+    })
+    updateAmapRouteSummary({
+      start,
+      end,
+      route: result.route,
+      steps: result.steps
+    })
+    focusAsukaRoute()
+    amapStatus.value = '路线已规划'
+    // #region debug-point D:plan-success
+    reportAmapAppDebug('D', 'planAsukaRoute completed successfully', {
+      traceId,
+      summaryPathName: amapRouteSummary.value.pathName,
+      distanceText: amapRouteSummary.value.distanceText,
+      durationText: amapRouteSummary.value.durationText,
+      overlayMarkerCount: amapRouteOverlays.markers.length,
+      hasPolyline: Boolean(amapRouteOverlays.polyline)
+    })
+    // #endregion
+  } catch (error) {
+    amapStatus.value = '路线规划失败'
+    // #region debug-point D:plan-error
+    reportAmapAppDebug('D', 'planAsukaRoute failed', {
+      traceId,
+      errorMessage: error?.message || '',
+      errorName: error?.name || '',
+      detail: amapErrorDetail.value,
+      mode: asukaNavMode.value
+    })
+    // #endregion
+    console.error('Asuka route plan error:', error)
+    amapErrorDetail.value = error?.message || '请尝试输入更完整的起点和终点'
+  } finally {
+    amapPlanning.value = false
+    // #region debug-point D:plan-finally
+    reportAmapAppDebug('D', 'planAsukaRoute finalized', {
+      traceId,
+      isPlanning: amapPlanning.value,
+      currentStatus: amapStatus.value,
+      errorDetail: amapErrorDetail.value
+    })
+    // #endregion
+  }
+}
+
+const setAsukaNavMode = async (mode) => {
+  if (asukaNavMode.value === mode) return
+  asukaNavMode.value = mode
+  if (asukaPage.value === 'nav' && currentCharacter.value === 'Asuka' && amapInstance.value) {
+    await planAsukaRoute()
+  }
+}
+
+const requestAmapGeolocation = async () => {
+  const prevStatus = amapStatus.value
+  amapStatus.value = '正在获取您的地理位置...'
+  locatingUser.value = true
+  try {
+    const AMap = await ensureAmapServices()
+    return new Promise((resolve, reject) => {
+      const geolocation = new AMap.Geolocation({
+        enableHighAccuracy: true,
+        timeout: 10000,
+        zoomToAccuracy: true,
+        noIpLocate: 0, // 优先使用浏览器定位
+        noGeoLocation: 0
+      })
+
+      geolocation.getCurrentPosition(async (status, result) => {
+        if (status === 'complete') {
+          const parsedLocation = parseGeolocationPayload(result)
+          const newLocation = await reverseGeocodeAmapLocation({
+            longitude: parsedLocation.longitude,
+            latitude: parsedLocation.latitude,
+            fallback: parsedLocation
+          })
+
+          // 1. 同步更新天气位置
+          weatherLocation.value = newLocation
+          geoSyncKey.value += 1
+          weatherCityInput.value = newLocation.city.split(' ').filter(Boolean)[0] || newLocation.city
+          persistWeatherLocation()
+          await fetchWeatherData()
+
+          // 2. 同步更新导航起点
+          navStart.value = newLocation.address
+
+          // 3. 刷新地图视图 (如果地图已存在)
+          if (amapInstance.value) {
+            amapInstance.value.setZoomAndCenter(15, [newLocation.longitude, newLocation.latitude])
+            // 如果在导航页，重新规划路线
+            if (asukaPage.value === 'nav') {
+              await planAsukaRoute()
+            }
+          }
+
+          amapStatus.value = '位置已更新'
+          resolve(newLocation)
+        } else {
+          console.warn('Geolocation failed, falling back to IP:', result)
+          // 如果高精度定位失败，尝试获取大概位置
+          geolocation.getCityInfo(async (cityStatus, cityResult) => {
+            if (cityStatus === 'complete') {
+              const cityName = cityResult?.city || cityResult?.province || '未知位置'
+              weatherCityInput.value = cityName.split(/[\s·]/).filter(Boolean)[0] || cityName
+              try {
+                const cityLocation = await searchCityLocation(cityName)
+                weatherLocation.value = {
+                  latitude: cityLocation.latitude,
+                  longitude: cityLocation.longitude,
+                  city: cityLocation.city,
+                  name: cityLocation.name,
+                  address: cityLocation.city
+                }
+                await fetchWeatherData()
+              } catch (error) {
+                weatherLocation.value = {
+                  ...weatherLocation.value,
+                  city: cityName,
+                  name: cityName,
+                  address: cityName
+                }
+              }
+              geoSyncKey.value += 1
+              persistWeatherLocation()
+              amapStatus.value = '已通过IP获取大概位置'
+              resolve(weatherLocation.value)
+            } else {
+              amapStatus.value = '自动定位失败，已使用默认位置'
+              reject(new Error(result?.message || '定位失败'))
+            }
+          })
+        }
+      })
+    })
+  } catch (error) {
+    console.error('Geolocation error:', error)
+    amapStatus.value = '定位功能不可用'
+    setTimeout(() => { amapStatus.value = prevStatus }, 3000)
+    throw error
+  } finally {
+    locatingUser.value = false
+  }
+}
+
+const fillAsukaCurrentLocation = async () => {
+  try {
+    const location = await requestAmapGeolocation()
+    navStart.value = location?.address || ASUKA_DEFAULT_START.address
+    if (amapInstance.value) {
+      await planAsukaRoute()
+    }
+  } catch (error) {
+    navStart.value = ASUKA_DEFAULT_START.address
+    if (amapInstance.value) {
+      await planAsukaRoute()
+    }
+  }
+}
+
 const initAmapMap = async () => {
   await nextTick()
   if (asukaPage.value !== 'nav' || currentCharacter.value !== 'Asuka' || !amapContainerRef.value) return
 
   try {
+    // #region debug-point E:init-start
+    reportAmapAppDebug('E', 'initAmapMap start', {
+      page: asukaPage.value,
+      character: currentCharacter.value,
+      hasContainer: Boolean(amapContainerRef.value),
+      hasMapInstance: Boolean(amapInstance.value)
+    })
+    // #endregion
     amapStatus.value = '高德地图载入中...'
     amapErrorDetail.value = ''
-    const AMap = await loadAmapScript()
+    const AMap = await ensureAmapServices()
 
     if (amapInstance.value) {
-      setTimeout(() => {
-        amapInstance.value && amapInstance.value.resize()
-      }, 50)
-      amapStatus.value = '高德地图已连接'
-      return
+      // 切换页面回来时，容器 div 已被 Vue 销毁并重建，旧的地图实例已失效
+      // 必须销毁旧实例并重新创建，否则会导致坐标转换失败 (Pixel NaN)
+      try {
+        amapInstance.value.destroy()
+      } catch (e) {
+        console.warn('Failed to destroy old amap instance:', e)
+      }
+      amapInstance.value = null
     }
 
     amapInstance.value = new AMap.Map(amapContainerRef.value, {
       viewMode: '3D',
-      zoom: 12,
-      center: [121.4737, 31.2304],
+      zoom: 14,
+      center: [weatherLocation.value.longitude, weatherLocation.value.latitude],
       mapStyle: 'amap://styles/darkblue'
     })
 
@@ -2071,22 +2835,21 @@ const initAmapMap = async () => {
       amapInstance.value.addControl(new AMap.ToolBar({ position: 'RB' }))
     })
 
-    const startMarker = new AMap.Marker({
-      position: [121.4737, 31.2304],
-      title: '当前位置'
-    })
-    const endMarker = new AMap.Marker({
-      position: [121.4905, 31.2397],
-      title: '目的地'
-    })
-    amapInstance.value.add([startMarker, endMarker])
-
     setTimeout(() => {
       amapInstance.value && amapInstance.value.resize()
     }, 80)
 
     amapStatus.value = '高德地图已连接'
+    await planAsukaRoute()
   } catch (error) {
+    // #region debug-point E:init-error
+    reportAmapAppDebug('E', 'initAmapMap failed', {
+      status: amapStatus.value,
+      errorMessage: error?.message || '',
+      errorName: error?.name || '',
+      detail: amapErrorDetail.value
+    })
+    // #endregion
     console.error('AMap load error:', error)
     amapErrorDetail.value = error?.message || '请检查高德地图配置'
     if (!amapStatus.value.includes('请先')) {
@@ -2141,7 +2904,19 @@ onMounted(async () => {
   loadWeatherLocation()
   loadScheduleItems()
   cleanupScheduleItems()
-  await fetchWeatherData()
+  
+  // 如果没有保存的位置，或者明确需要自动定位
+  if (!localStorage.getItem(WEATHER_LOCATION_STORAGE_KEY)) {
+    try {
+      await requestAmapGeolocation()
+    } catch (e) {
+      console.warn('Initial geolocation failed, using default.', e)
+      await fetchWeatherData()
+    }
+  } else {
+    await fetchWeatherData()
+  }
+
   weatherRefreshTimer.value = window.setInterval(() => {
     fetchWeatherData()
   }, WEATHER_REFRESH_INTERVAL)
@@ -2162,6 +2937,11 @@ onBeforeUnmount(() => {
   }
   if (weatherSuggestTimer.value) {
     clearTimeout(weatherSuggestTimer.value)
+  }
+  clearAmapRouteOverlays()
+  if (amapInstance.value) {
+    amapInstance.value.destroy()
+    amapInstance.value = null
   }
 })
 </script>
@@ -2351,6 +3131,55 @@ body {
   justify-content: flex-end;
   align-items: center;
   gap: 10px;
+}
+
+.top-locate-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line-soft);
+  color: var(--text-soft);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.top-locate-btn:hover {
+  border-color: var(--line);
+  color: var(--text-main);
+  background: var(--hover-color);
+  box-shadow: 0 0 10px var(--accent-soft);
+}
+
+.top-locate-btn .locate-icon {
+  font-size: 16px;
+  color: var(--accent);
+}
+
+.top-locate-btn .locate-icon.rotating {
+  animation: locate-rotate 1.2s linear infinite;
+}
+
+.top-location-pill {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--line-soft);
+  color: var(--text-soft);
+  background: var(--panel-soft);
+  font-size: 12px;
+}
+
+@keyframes locate-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .character-switch {
@@ -2917,6 +3746,11 @@ body {
   cursor: pointer;
 }
 
+.quick-chip.active {
+  background: rgba(255, 91, 53, 0.16);
+  border-color: rgba(255, 91, 53, 0.42);
+}
+
 .nav-page-body {
   flex: 1;
   min-height: 0;
@@ -3019,6 +3853,11 @@ body {
   cursor: pointer;
 }
 
+.nav-go-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .nav-map-large {
   position: relative;
   min-height: 0;
@@ -3093,6 +3932,19 @@ body {
   color: #fff;
   font-size: 12px;
   font-weight: 800;
+}
+
+.nav-map-large :deep(.asuka-amap-label) {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(10, 14, 24, 0.82);
+  color: #fff;
+  font-size: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.nav-map-large :deep(.asuka-amap-label.end) {
+  background: rgba(255, 75, 42, 0.88);
 }
 
 .nav-bottom-grid {

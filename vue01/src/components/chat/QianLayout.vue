@@ -33,7 +33,7 @@
         <div class="user-pill" @click="$emit('switch-character')">
           <img src="/image/qian/happy.png" alt="avatar" class="user-thumb" />
           <div class="user-info">
-            <div class="user-name">花语同学</div>
+            <div class="user-name">千千同学</div>
             <div class="user-lv">Lv.20</div>
           </div>
           <span class="chevron">⌄</span>
@@ -42,6 +42,24 @@
     </header>
 
     <div class="qian-main-grid">
+      <div class="qian-sticker-layer" aria-hidden="true">
+        <img
+          src="/image/qian/微信图片_20260518185636_754_357.png"
+          alt=""
+          class="floating-page-sticker sticker-one"
+        />
+        <img
+          src="/image/qian/微信图片_20260518185638_755_357.png"
+          alt=""
+          class="floating-page-sticker sticker-two"
+        />
+        <img
+          src="/image/qian/微信图片_20260518185639_756_357.png"
+          alt=""
+          class="floating-page-sticker sticker-three"
+        />
+      </div>
+
       <!-- 左侧：角色信息卡片 -->
       <aside class="qian-left-col">
         <div class="portrait-card glass-panel">
@@ -50,7 +68,7 @@
             <div class="portrait-overlay">FLOWERS STUDIO</div>
           </div>
           <div class="char-meta">
-            <div class="char-name">花语同学 <span class="ai-badge">AI 助手</span></div>
+            <div class="char-name">千千同学 <span class="ai-badge">AI 助手</span></div>
             <div class="char-desc">你的花艺学伴 & 生活小助手</div>
             <div class="lv-progress">
               <div class="lv-text">Lv.20</div>
@@ -76,7 +94,7 @@
         <div class="flower-card glass-panel">
           <div class="card-title">本周照料的花束</div>
           <div class="flower-count">12 <span class="unit">束</span></div>
-          <img src="/image/qian/wink.png" alt="flower" class="flower-img" />
+          <img src="/image/qian/wink.png" alt="flower" class="flower-img" loading="lazy" decoding="async" />
         </div>
       </aside>
 
@@ -86,7 +104,7 @@
           <div class="chat-header">
             <div class="chat-title">
               <span class="icon">💠</span>
-              与 花语同学 对话中
+              与 千千同学 对话中
               <div class="chat-subtitle">基于大语言模型 · LLM API</div>
             </div>
             <div class="chat-actions">
@@ -117,7 +135,7 @@
               />
               <div class="msg-bubble">
                 <div v-if="msg.role === 'assistant'" class="ai-header">
-                  花语同学 <span class="time">10:30</span>
+                  千千同学 <span class="time">10:30</span>
                 </div>
                 {{ msg.content }}
                 
@@ -242,7 +260,7 @@
             <div class="tool-name">拍照识别</div>
             <div class="tool-desc">识别花卉、植物、物体、文字等</div>
           </div>
-          <img src="/image/qian/curious.png" alt="sticker" class="card-sticker" />
+          <img src="/image/qian/curious.png" alt="sticker" class="card-sticker" loading="lazy" decoding="async" />
         </div>
         <div class="tool-card glass-panel">
           <div class="tool-icon bg-blue">📅</div>
@@ -250,7 +268,7 @@
             <div class="tool-name">课程表 / 日程</div>
             <div class="tool-desc">查看课程表、管理日程与提醒</div>
           </div>
-          <img src="/image/qian/expect.png" alt="sticker" class="card-sticker" />
+          <img src="/image/qian/expect.png" alt="sticker" class="card-sticker" loading="lazy" decoding="async" />
         </div>
         <div class="tool-card glass-panel">
           <div class="tool-icon bg-pink">A</div>
@@ -258,7 +276,7 @@
             <div class="tool-name">翻译助手</div>
             <div class="tool-desc">多语言互译，支持文本与语音</div>
           </div>
-          <img src="/image/qian/listen.png" alt="sticker" class="card-sticker" />
+          <img src="/image/qian/listen.png" alt="sticker" class="card-sticker" loading="lazy" decoding="async" />
         </div>
         <div class="tool-card glass-panel">
           <div class="tool-icon bg-indigo">📄</div>
@@ -266,7 +284,7 @@
             <div class="tool-name">文档总结</div>
             <div class="tool-desc">上传文档，智能提炼重点摘要</div>
           </div>
-          <img src="/image/qian/cool.png" alt="sticker" class="card-sticker" />
+          <img src="/image/qian/cool.png" alt="sticker" class="card-sticker" loading="lazy" decoding="async" />
         </div>
         <div class="tool-card glass-panel">
           <div class="tool-icon bg-green">🎙️</div>
@@ -274,7 +292,7 @@
             <div class="tool-name">语音对话</div>
             <div class="tool-desc">语音交流，实时识别与回复</div>
           </div>
-          <img src="/image/qian/happy.png" alt="sticker" class="card-sticker" />
+          <img src="/image/qian/happy.png" alt="sticker" class="card-sticker" loading="lazy" decoding="async" />
         </div>
         <div class="tool-card glass-panel">
           <div class="tool-icon bg-gray">🎲</div>
@@ -282,7 +300,7 @@
             <div class="tool-name">更多工具</div>
             <div class="tool-desc">更多实用工具持续更新中</div>
           </div>
-          <img src="/image/qian/surpise.png" alt="sticker" class="card-sticker" />
+          <img src="/image/qian/surpise.png" alt="sticker" class="card-sticker" loading="lazy" decoding="async" />
         </div>
       </div>
     </footer>
@@ -355,6 +373,7 @@ onMounted(scrollToBottom)
 
 <style scoped>
 .qian-dashboard {
+  position: relative;
   width: 100vw;
   min-height: 100vh; /* 改为最小高度，允许内容撑开 */
   background-size: cover;
@@ -483,11 +502,44 @@ onMounted(scrollToBottom)
 /* 主网格 */
 .qian-main-grid {
   flex: 1;
+  position: relative;
   display: grid;
   grid-template-columns: 280px 1fr 300px;
   gap: 20px;
   padding: 20px 30px;
   /* 移除 overflow: hidden，允许随内容增长 */
+}
+
+.qian-sticker-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.floating-page-sticker {
+  position: absolute;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 24px rgba(124, 92, 255, 0.16));
+  opacity: 0.98;
+}
+
+.sticker-one {
+  left: 212px;
+  top: 78px;
+  width: 92px;
+}
+
+.sticker-two {
+  right: 222px;
+  top: 92px;
+  width: 108px;
+}
+
+.sticker-three {
+  right: 78px;
+  bottom: 64px;
+  width: 120px;
 }
 
 /* 左侧栏 */
@@ -857,4 +909,27 @@ onMounted(scrollToBottom)
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(124, 92, 255, 0.2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(124, 92, 255, 0.4); }
+
+@media (max-width: 1400px) {
+  .sticker-one {
+    left: 188px;
+    width: 82px;
+  }
+
+  .sticker-two {
+    right: 188px;
+    width: 96px;
+  }
+
+  .sticker-three {
+    right: 56px;
+    width: 108px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .qian-sticker-layer {
+    display: none;
+  }
+}
 </style>
