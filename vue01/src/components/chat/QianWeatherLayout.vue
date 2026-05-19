@@ -10,7 +10,7 @@
         </div>
         <div class="qian-logo">
           <div class="logo-text-top">Qian's Garden</div>
-          <div class="logo-text-bottom">专属陪伴</div>
+          <div class="logo-text-bottom">AI助手</div>
         </div>
       </div>
 

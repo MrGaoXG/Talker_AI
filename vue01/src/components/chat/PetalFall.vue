@@ -38,7 +38,7 @@ const petalStyle = (seed) => {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: 5;
   overflow: hidden;
 }
 

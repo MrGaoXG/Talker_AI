@@ -1069,6 +1069,7 @@
       :latest-ai-message="latestAiMessage"
       :current-character="currentCharacter"
       :current-page="qianPage"
+      :weather-today="weatherToday"
       @send="handleSendMsg"
       @typing-end="handleTypingEnd"
       @page-change="qianPage = $event"

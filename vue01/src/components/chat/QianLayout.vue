@@ -2,6 +2,12 @@
   <div class="qian-dashboard" :style="{ backgroundImage: `url('/qianbackground.png')` }">
     <PetalFall />
 
+    <!-- 天气关联横幅 -->
+    <div v-if="weatherBanner.show" class="weather-banner" :class="weatherBanner.type">
+      <span class="weather-banner-icon">{{ weatherBanner.icon }}</span>
+      <span>{{ weatherBanner.text }}</span>
+    </div>
+
     <!-- 首次访问彩蛋 -->
     <Teleport to="body">
       <div v-if="showFirstVisit" class="first-visit-overlay" @click="dismissFirstVisit">
@@ -22,7 +28,7 @@
       <div class="header-left">
         <div class="qian-logo">
           <div class="logo-text-top">Qian's Garden</div>
-          <div class="logo-text-bottom">专属陪伴 <span class="sparkle">✦</span></div>
+          <div class="logo-text-bottom">AI助手 <span class="sparkle">✦</span></div>
         </div>
         
         <!-- 新增：返回 Asuka 切换按钮 -->
@@ -96,6 +102,15 @@
           <div class="quote-box">
             <span class="quote-mark">"</span>
             {{ dailyFlowerQuote }}
+          </div>
+
+          <div class="garden-card glass-panel">
+            <div class="garden-title">🌸 花园</div>
+            <div class="garden-flowers">
+              <span v-for="i in gardenFlowerCount" :key="i" class="garden-flower" :style="{ animationDelay: (i * 0.15) + 's' }">🌸</span>
+              <span v-if="gardenFlowerCount === 0" class="garden-empty">和千千多聊聊天，花园就会开花哦 🌱</span>
+            </div>
+            <div v-if="gardenFlowerCount > 0" class="garden-count">已绽放 {{ gardenFlowerCount }} 朵花</div>
           </div>
         </div>
 
@@ -319,8 +334,53 @@
           </div>
           <img src="/image/qian/surpise.png" alt="sticker" class="card-sticker" loading="lazy" decoding="async" />
         </div>
+        <div class="tool-card glass-panel wish-trigger-card" @click="showWishBottle = true">
+          <div class="tool-icon bg-gold">🌟</div>
+          <div class="tool-meta">
+            <div class="tool-name">许愿瓶</div>
+            <div class="tool-desc">写下心愿，千千帮你守护</div>
+          </div>
+          <img src="/image/qian/expect.png" alt="sticker" class="card-sticker" loading="lazy" decoding="async" />
+        </div>
       </div>
     </footer>
+
+    <!-- 许愿瓶弹窗 -->
+    <Teleport to="body">
+      <div v-if="showWishBottle" class="wish-overlay" @click.self="showWishBottle = false">
+        <div class="wish-modal glass-panel">
+          <div class="wish-modal-header">
+            <div class="wish-modal-title">🌟 许愿瓶</div>
+            <button class="wish-close-btn" @click="showWishBottle = false">✕</button>
+          </div>
+          <div class="wish-input-area">
+            <textarea
+              v-model="wishInput"
+              placeholder="写下你的心愿吧..."
+              class="wish-textarea"
+              maxlength="100"
+              rows="3"
+            ></textarea>
+            <div class="wish-chars">{{ wishInput.length }}/100</div>
+          </div>
+          <button class="wish-submit-btn" @click="submitWish" :disabled="!wishInput.trim() || wishSubmitted">
+            <template v-if="wishSubmitted">千千已收到你的心愿 💫</template>
+            <template v-else>投进许愿瓶 🌟</template>
+          </button>
+          <div v-if="wishReply" class="wish-reply">{{ wishReply }}</div>
+          <div v-if="savedWishes.length > 0" class="wish-history">
+            <div class="wish-history-title">已许下的心愿 ({{ savedWishes.length }})</div>
+            <div v-for="(w, idx) in savedWishes" :key="idx" class="wish-history-item">
+              <span class="wish-star">⭐</span>
+              <span>{{ w.text }}</span>
+            </div>
+          </div>
+          <div class="wish-floating-sticker">
+            <img src="/image/qian/wink.png" alt="qian" class="wish-qian-sticker" />
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -340,6 +400,10 @@ const props = defineProps({
   currentPage: {
     type: String,
     default: 'home'
+  },
+  weatherToday: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -439,6 +503,81 @@ const dailyFlowerQuote = computed(() => {
   const day = new Date().getDate() - 1
   return FLOWER_QUOTES[day % FLOWER_QUOTES.length]
 })
+
+const weatherBanner = computed(() => {
+  const text = (props.weatherToday.summary || '') + (props.weatherToday.description || '')
+  const lower = text.toLowerCase()
+  if (lower.includes('雨') || lower.includes('rain')) {
+    return { show: true, type: 'rain', icon: '🌧️', text: '下雨了，记得带伞哦 🌂 千千在这里陪你' }
+  }
+  if (lower.includes('雪') || lower.includes('snow')) {
+    return { show: true, type: 'snow', icon: '❄️', text: '下雪了，多穿点衣服，别着凉啦 ⛄' }
+  }
+  if (lower.includes('晴') || lower.includes('clear') || lower.includes('sun')) {
+    return { show: true, type: 'sun', icon: '☀️', text: '今天阳光正好，适合出去走走哦 🌻' }
+  }
+  if (lower.includes('阴') || lower.includes('cloud')) {
+    return { show: false, type: '', icon: '', text: '' }
+  }
+  return { show: false, type: '', icon: '', text: '' }
+})
+
+const GARDEN_KEY = 'qian_garden_msg_count'
+const MAX_FLOWERS = 12
+
+const updateGardenFromMessages = () => {
+  const msgs = props.messages || []
+  if (!msgs.length) return
+  try {
+    localStorage.setItem(GARDEN_KEY, String(msgs.length))
+  } catch (e) { /* ignore */ }
+}
+
+watch(() => (props.messages || []).length, updateGardenFromMessages)
+
+const gardenFlowerCount = computed(() => {
+  try {
+    const raw = localStorage.getItem(GARDEN_KEY)
+    const count = raw ? parseInt(raw, 10) : 0
+    return Math.min(Math.floor(count / 3), MAX_FLOWERS)
+  } catch (e) {
+    return 0
+  }
+})
+
+const showWishBottle = ref(false)
+const wishInput = ref('')
+const wishSubmitted = ref(false)
+const wishReply = ref('')
+const savedWishes = ref([])
+
+const WISHES_KEY = 'qian_garden_wishes'
+
+const loadWishes = () => {
+  try {
+    savedWishes.value = JSON.parse(localStorage.getItem(WISHES_KEY) || '[]')
+  } catch (e) {
+    savedWishes.value = []
+  }
+}
+
+const submitWish = () => {
+  if (!wishInput.value.trim() || wishSubmitted.value) return
+  const text = wishInput.value.trim()
+  savedWishes.value.push({ text, date: new Date().toLocaleDateString('zh-CN') })
+  try {
+    localStorage.setItem(WISHES_KEY, JSON.stringify(savedWishes.value))
+  } catch (e) { /* ignore */ }
+  wishSubmitted.value = true
+  wishReply.value = '我收到啦，会帮你守护这个愿望 🌟'
+  setTimeout(() => {
+    wishSubmitted.value = false
+    wishInput.value = ''
+    wishReply.value = ''
+  }, 3000)
+}
+
+loadWishes()
 
 const handleSend = () => {
   if (inputVal.value.trim() && !props.isThinking && !props.isTyping) {
@@ -696,7 +835,7 @@ onMounted(scrollToBottom)
   position: absolute;
   right: 20px;
   bottom: 140px; /* 输入框上方 */
-  z-index: 500;
+  z-index: 1500;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -739,8 +878,9 @@ onMounted(scrollToBottom)
 /* 中间栏 */
 .qian-center-col { 
   display: flex; 
-  flex-direction: column; 
-  min-height: 600px; /* 设置一个最小高度，保证对话区比例 */
+  flex-direction: column;
+  position: relative;
+  min-height: 600px;
 }
 .chat-container { 
   flex: 1; 
@@ -989,7 +1129,7 @@ onMounted(scrollToBottom)
 /* 底部工具 */
 .qian-footer { padding: 0 30px 20px; flex-shrink: 0; }
 .footer-title { font-size: 15px; font-weight: bold; margin-bottom: 15px; }
-.tools-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; }
+.tools-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; }
 .card-sticker {
   position: absolute;
   right: 5px;
@@ -997,6 +1137,251 @@ onMounted(scrollToBottom)
   width: 50px;
   opacity: 0.9;
   pointer-events: none;
+}
+
+.weather-banner {
+  position: relative;
+  z-index: 10;
+  padding: 10px 24px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  animation: bannerSlideDown 0.5s ease;
+}
+
+.weather-banner.rain {
+  background: linear-gradient(90deg, rgba(100, 140, 200, 0.85), rgba(80, 120, 190, 0.85));
+}
+
+.weather-banner.snow {
+  background: linear-gradient(90deg, rgba(180, 210, 240, 0.85), rgba(160, 200, 235, 0.85));
+  color: #3a4a6a;
+}
+
+.weather-banner.sun {
+  background: linear-gradient(90deg, rgba(255, 180, 80, 0.85), rgba(255, 150, 50, 0.85));
+}
+
+.weather-banner-icon {
+  margin-right: 8px;
+  font-size: 18px;
+}
+
+@keyframes bannerSlideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.garden-card {
+  padding: 14px;
+  margin-top: 12px;
+}
+
+.garden-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #7c5cff;
+  margin-bottom: 10px;
+}
+
+.garden-flowers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 30px;
+  align-items: center;
+}
+
+.garden-flower {
+  font-size: 18px;
+  animation: flowerBloom 0.4s ease both;
+}
+
+@keyframes flowerBloom {
+  from { opacity: 0; transform: scale(0) rotate(-10deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+.garden-empty {
+  font-size: 12px;
+  color: #8a73b5;
+  font-style: italic;
+}
+
+.garden-count {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #7c5cff;
+  font-weight: 600;
+}
+
+.wish-trigger-card {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(255, 180, 50, 0.12)) !important;
+  border-color: rgba(255, 200, 50, 0.3) !important;
+}
+
+.bg-gold {
+  background: linear-gradient(135deg, #ffd700, #ffb830);
+  color: #fff;
+}
+
+.wish-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: overlayFadeIn 0.3s ease;
+}
+
+.wish-modal {
+  position: relative;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 24px;
+  padding: 32px;
+  max-width: 440px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(124, 92, 255, 0.2);
+  animation: cardRise 0.4s ease 0.1s both;
+}
+
+.wish-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.wish-modal-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #7c5cff;
+}
+
+.wish-close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #aaa;
+  cursor: pointer;
+}
+
+.wish-input-area {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.wish-textarea {
+  width: 100%;
+  border: 2px solid rgba(124, 92, 255, 0.2);
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 15px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+}
+
+.wish-textarea:focus {
+  border-color: #7c5cff;
+}
+
+.wish-chars {
+  text-align: right;
+  font-size: 11px;
+  color: #8a73b5;
+  margin-top: 4px;
+}
+
+.wish-submit-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #7c5cff, #9d78d2);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.wish-submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(124, 92, 255, 0.3);
+}
+
+.wish-submit-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  color: #fff;
+}
+
+.wish-reply {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 15px;
+  color: #7c5cff;
+  font-weight: 600;
+  animation: wishReplyFade 0.5s ease;
+}
+
+@keyframes wishReplyFade {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.wish-history {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(124, 92, 255, 0.1);
+}
+
+.wish-history-title {
+  font-size: 13px;
+  color: #8a73b5;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.wish-history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 14px;
+  color: #5a4b81;
+  border-bottom: 1px dashed rgba(124, 92, 255, 0.08);
+}
+
+.wish-star {
+  flex-shrink: 0;
+}
+
+.wish-floating-sticker {
+  position: absolute;
+  bottom: -20px;
+  right: -20px;
+  pointer-events: none;
+}
+
+.wish-qian-sticker {
+  width: 80px;
+  opacity: 0.8;
+  animation: wishStickerFloat 3s ease-in-out infinite;
+}
+
+@keyframes wishStickerFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
 }
 
 .first-visit-overlay {
