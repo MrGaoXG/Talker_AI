@@ -1180,7 +1180,7 @@ const currentMessages = computed(() => {
 const historyRef = ref(null)
 const isThinking = ref(false)
 const isTyping = ref(false)
-const currentCharacter = ref('Asuka') // 角色状态：'Asuka', 'qian' 或 'campus'
+const currentCharacter = ref('qian')
 const qianPage = ref('home')
 const asukaPage = ref('home')
 const ASUKA_DEFAULT_START = {

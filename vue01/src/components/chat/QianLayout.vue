@@ -1,11 +1,28 @@
 <template>
   <div class="qian-dashboard" :style="{ backgroundImage: `url('/qianbackground.png')` }">
+    <PetalFall />
+
+    <!-- 首次访问彩蛋 -->
+    <Teleport to="body">
+      <div v-if="showFirstVisit" class="first-visit-overlay" @click="dismissFirstVisit">
+        <div class="first-visit-card">
+          <div class="first-visit-sparkle">✨</div>
+          <div class="first-visit-title">欢迎来到 Qian's Garden</div>
+          <div class="first-visit-typewriter">
+            <span class="typewriter-text">{{ typewriterDisplay }}</span>
+            <span class="typewriter-cursor" :class="{ blink: typewriterDone }">|</span>
+          </div>
+          <div v-if="typewriterDone" class="first-visit-hint">点击任意位置进入花园 🌸</div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- 顶部导航栏 -->
     <header class="qian-header">
       <div class="header-left">
         <div class="qian-logo">
-          <div class="logo-text-top">FLOWERS STUDIO</div>
-          <div class="logo-text-bottom">AI 助手 <span class="sparkle">✦</span></div>
+          <div class="logo-text-top">Qian's Garden</div>
+          <div class="logo-text-bottom">专属陪伴 <span class="sparkle">✦</span></div>
         </div>
         
         <!-- 新增：返回 Asuka 切换按钮 -->
@@ -65,11 +82,11 @@
         <div class="portrait-card glass-panel">
           <div class="portrait-box">
             <img src="/image/qian/happy.png" alt="Qian" class="main-portrait-static" />
-            <div class="portrait-overlay">FLOWERS STUDIO</div>
+            <div class="portrait-overlay">Qian's Garden</div>
           </div>
           <div class="char-meta">
             <div class="char-name">千千同学 <span class="ai-badge">AI 助手</span></div>
-            <div class="char-desc">你的花艺学伴 & 生活小助手</div>
+            <div class="char-desc">🌸 你的专属花园伙伴</div>
             <div class="lv-progress">
               <div class="lv-text">Lv.20</div>
               <div class="progress-bar"><div class="progress-fill" style="width: 85%"></div></div>
@@ -77,8 +94,8 @@
             </div>
           </div>
           <div class="quote-box">
-            <span class="quote-mark">“</span>
-            花会在合适时间绽放，你也在努力之后发光。 ✨
+            <span class="quote-mark">"</span>
+            {{ dailyFlowerQuote }}
           </div>
         </div>
 
@@ -104,7 +121,7 @@
           <div class="chat-header">
             <div class="chat-title">
               <span class="icon">💠</span>
-              与 千千同学 对话中
+              与千千的聊天
               <div class="chat-subtitle">基于大语言模型 · LLM API</div>
             </div>
             <div class="chat-actions">
@@ -124,7 +141,7 @@
                  />
                  <AiAvatar :emotion="props.currentEmotion" :character="props.currentCharacter" />
                </div>
-               <div class="welcome-text">有什么我可以帮您的吗？</div>
+               <div class="welcome-text">{{ welcomeGreeting }}</div>
             </div>
             
             <div v-for="(msg, index) in props.messages" :key="index" :class="['message-row', msg.role]">
@@ -308,9 +325,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, nextTick, computed } from 'vue'
 import AiAvatar from './AiAvatar.vue'
 import SpeechBubble from './SpeechBubble.vue'
+import PetalFall from './PetalFall.vue'
 
 const props = defineProps({
   messages: Array,
@@ -329,6 +347,98 @@ const emit = defineEmits(['switch-character', 'send', 'typing-end', 'page-change
 const historyRef = ref(null)
 const inputVal = ref('')
 const textareaRef = ref(null)
+
+const welcomeGreeting = computed(() => {
+  const hour = new Date().getHours()
+  if (hour >= 6 && hour < 12) {
+    return '早上好呀，今天阳光正好，一起开启美好的一天吧 ☀️'
+  } else if (hour >= 12 && hour < 18) {
+    return '下午好～记得喝杯茶休息一下，我一直在这里陪你 🌸'
+  } else if (hour >= 18 && hour < 22) {
+    return '晚上好，今天过得怎么样？无论好坏都可以跟我说说 ✨'
+  } else {
+    return '夜深了，别太累哦。我在呢，晚安好梦 🌙'
+  }
+})
+
+const FIRST_VISIT_KEY = 'qian_garden_visited'
+const FIRST_VISIT_MSG = '这里是一座只为你盛开的花园。无论开心还是难过，我都会在这里，听你说每一句话，陪你度过每一个瞬间。'
+
+const showFirstVisit = ref(false)
+const typewriterDisplay = ref('')
+const typewriterDone = ref(false)
+
+const startTypewriter = () => {
+  let i = 0
+  typewriterDisplay.value = ''
+  typewriterDone.value = false
+  const timer = setInterval(() => {
+    typewriterDisplay.value += FIRST_VISIT_MSG[i]
+    i++
+    if (i >= FIRST_VISIT_MSG.length) {
+      clearInterval(timer)
+      typewriterDone.value = true
+    }
+  }, 80)
+}
+
+const dismissFirstVisit = () => {
+  if (!typewriterDone.value) return
+  showFirstVisit.value = false
+  try {
+    localStorage.setItem(FIRST_VISIT_KEY, '1')
+  } catch (e) { /* ignore */ }
+}
+
+onMounted(() => {
+  let visited = false
+  try {
+    visited = localStorage.getItem(FIRST_VISIT_KEY) === '1'
+  } catch (e) { /* ignore */ }
+  if (!visited) {
+    showFirstVisit.value = true
+    setTimeout(startTypewriter, 400)
+  }
+})
+
+const FLOWER_QUOTES = [
+  '每一朵花都有它盛开的时节，你也一样 🌷',
+  '不用追赶太阳，你本身就是一束光 ✨',
+  '今天也要像向日葵一样，面朝阳光 🌻',
+  '温柔是这个世界最强大的力量 🌸',
+  '花会沿路盛开，你的未来也是 🌺',
+  '保持热爱，奔赴你的花海 💐',
+  '你笑起来的样子，比花还好看 😊',
+  '风会记得每一朵花的香 🌬️',
+  '不必成为玫瑰，做你自己的花 🌼',
+  '世界很大，但你是独一无二的 🌍',
+  '今天的你，也是闪闪发光的 ⭐',
+  '慢慢来，花不是一天盛开的 🌱',
+  '把烦恼都种进土里，会长出快乐 🌿',
+  '你是四月天里最温柔的风 🍃',
+  '即使微小如雏菊，也有自己的春天 🌾',
+  '每一天都是新的花期，尽情绽放吧 🌷',
+  '愿你被世界温柔以待 💫',
+  '雨后的彩虹，是你微笑的弧度 🌈',
+  '星星会说话，石头会开花 🌟',
+  '生活明朗，万物可爱，人间值得 💖',
+  '把日子过成诗，把生活过成花 🌸',
+  '月光落在你肩上，温柔了时光 🌙',
+  '你值得世间所有的美好 💎',
+  '心若向阳，无畏悲伤 ☀️',
+  '像樱花一样，在最美的时刻绽放 🌸',
+  '岁月漫长，然而值得等待 ⏳',
+  '种自己的花，爱自己的宇宙 🪐',
+  '你是藏在云层里的月亮 🌛',
+  '愿你此生尽兴，赤诚善良 🎀',
+  '春天会来，你也会越来越好 🌿',
+  '总有一个人，会为你翻山越岭而来 🏔️'
+]
+
+const dailyFlowerQuote = computed(() => {
+  const day = new Date().getDate() - 1
+  return FLOWER_QUOTES[day % FLOWER_QUOTES.length]
+})
 
 const handleSend = () => {
   if (inputVal.value.trim() && !props.isThinking && !props.isTyping) {
@@ -887,6 +997,95 @@ onMounted(scrollToBottom)
   width: 50px;
   opacity: 0.9;
   pointer-events: none;
+}
+
+.first-visit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  animation: overlayFadeIn 0.6s ease;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.first-visit-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
+  padding: 50px 40px;
+  max-width: 520px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(124, 92, 255, 0.25);
+  animation: cardRise 0.5s ease 0.2s both;
+  cursor: default;
+}
+
+@keyframes cardRise {
+  from { opacity: 0; transform: translateY(30px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.first-visit-sparkle {
+  font-size: 48px;
+  margin-bottom: 16px;
+  animation: sparklePulse 2s infinite ease-in-out;
+}
+
+@keyframes sparklePulse {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.2) rotate(10deg); }
+}
+
+.first-visit-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #7c5cff;
+  margin-bottom: 24px;
+  letter-spacing: 1px;
+}
+
+.first-visit-typewriter {
+  font-size: 17px;
+  color: #5a4b81;
+  line-height: 1.9;
+  min-height: 100px;
+  text-align: left;
+  padding: 0 10px;
+}
+
+.typewriter-cursor {
+  color: #7c5cff;
+  font-weight: bold;
+}
+
+.typewriter-cursor.blink {
+  animation: cursorBlink 0.8s infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.first-visit-hint {
+  margin-top: 30px;
+  font-size: 15px;
+  color: #8a73b5;
+  animation: hintFadeIn 0.6s ease;
+}
+
+@keyframes hintFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .tool-card { padding: 15px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: transform 0.2s; position: relative; overflow: hidden; }

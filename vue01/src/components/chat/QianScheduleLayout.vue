@@ -1,5 +1,6 @@
 <template>
   <div class="qian-schedule-page" :style="{ backgroundImage: `url('/image/qian/qianbackground.png')` }">
+    <PetalFall />
     <div class="page-overlay"></div>
 
     <header class="qian-header">
@@ -8,8 +9,8 @@
           <div class="brand-flower">✿</div>
         </div>
         <div class="qian-logo">
-          <div class="logo-text-top">FLOWERS STUDIO</div>
-          <div class="logo-text-bottom">AI 助手</div>
+          <div class="logo-text-top">Qian's Garden</div>
+          <div class="logo-text-bottom">专属陪伴</div>
         </div>
       </div>
 
@@ -513,6 +514,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import PetalFall from './PetalFall.vue'
 
 const props = defineProps({
   currentPage: {

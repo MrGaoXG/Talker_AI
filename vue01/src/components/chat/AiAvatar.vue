@@ -1,7 +1,7 @@
 <template>
   <div 
     class="ai-avatar" 
-    :class="[emotion, { 'is-poked': isPoked }]"
+    :class="[displayEmotion, { 'is-poked': isPoked }]"
     ref="avatarRef"
     @mousemove="handleMouseMove"
     @mouseleave="handleMouseLeave"
@@ -12,8 +12,8 @@
   >
     <div class="avatar-inner">
       <picture>
-        <source :key="`${character}-${emotion}-webp`" :srcset="webpSrc" type="image/webp" />
-        <img :key="`${character}-${emotion}`" :src="imageSrc" :alt="character + ' Avatar'" class="avatar-image" />
+        <source :key="`${character}-${displayEmotion}-webp`" :srcset="displayWebpSrc" type="image/webp" />
+        <img :key="`${character}-${displayEmotion}`" :src="displayImageSrc" :alt="character + ' Avatar'" class="avatar-image" />
       </picture>
     </div>
     
@@ -21,8 +21,11 @@
     <div class="sparkle sp-1">✨</div>
     <div class="sparkle sp-2">✦</div>
 
-    <!-- 爱心点击特效 -->
-    <div v-if="showHeart" class="poke-heart" :style="{ left: heartX + 'px', top: heartY + 'px' }">❤️</div>
+    <!-- 点击特效 -->
+    <div v-if="showPokeEffect" class="poke-emoji" :style="{ left: pokeX + 'px', top: pokeY + 'px' }">{{ pokeEmoji }}</div>
+
+    <!-- 戳一戳随机语录 -->
+    <div v-if="showPokeQuote" class="poke-quote" :style="{ left: pokeQuoteX + 'px', top: pokeQuoteY + 'px' }">{{ pokeQuoteText }}</div>
 
     <!-- 预加载隐藏层，实现无延迟切换 -->
     <div style="display: none;">
@@ -32,7 +35,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
   emotion: {
@@ -45,6 +48,8 @@ const props = defineProps({
   }
 })
 
+const emit = defineEmits(['poke-emotion'])
+
 // --- 3D 视差跟随逻辑 ---
 const avatarRef = ref(null)
 const tiltX = ref(0)
@@ -53,48 +58,90 @@ const tiltY = ref(0)
 const handleMouseMove = (e) => {
   if (!avatarRef.value) return
   const rect = avatarRef.value.getBoundingClientRect()
-  // 计算鼠标在元素内的相对位置 (0 到 1)
   const x = (e.clientX - rect.left) / rect.width
   const y = (e.clientY - rect.top) / rect.height
   
-  // 将位置映射到旋转角度 (比如最大倾斜 15 度)
   const multiplier = 15
   tiltX.value = (0.5 - y) * multiplier
   tiltY.value = (x - 0.5) * multiplier
 }
 
 const handleMouseLeave = () => {
-  // 鼠标离开时恢复原状
   tiltX.value = 0
   tiltY.value = 0
 }
 
+// --- 显示表情 (内部覆盖逻辑) ---
+const overrideEmotion = ref(null)
+let overrideTimer = null
+
+const displayEmotion = computed(() => overrideEmotion.value || normalizeEmotion(props.emotion))
+
+watch(() => props.emotion, () => {
+  if (!overrideEmotion.value) return
+})
+
 // --- 点击戳一戳逻辑 ---
 const isPoked = ref(false)
-const showHeart = ref(false)
-const heartX = ref(0)
-const heartY = ref(0)
+const showPokeEffect = ref(false)
+const pokeX = ref(0)
+const pokeY = ref(0)
+const pokeEmoji = ref('❤️')
+const showPokeQuote = ref(false)
+const pokeQuoteX = ref(0)
+const pokeQuoteY = ref(0)
+const pokeQuoteText = ref('')
+
+const POKE_EMOJIS = ['❤️', '😊', '🌸', '✨', '💕', '🌟', '💫', '🥰', '💖', '🌷']
+const POKE_QUOTES = [
+  '戳到我了！', '嘻嘻，别闹～', '你怎么又戳我！', '好痒好痒～',
+  '再戳我就生气咯！', '哼，被你发现了', '呀！吓我一跳',
+  '今天心情不错呢', '有人在想我吗？', '最喜欢和你互动了',
+  '嘿嘿，你好呀', '这里很敏感的啦', '轻点轻点～', '呜哇！'
+]
+const POKE_EMOTIONS = ['happy', 'wink', 'surprise', 'curious', 'shy', 'normal']
+
+const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)]
 
 const handlePoke = (e) => {
   if (isPoked.value) return
   
-  // 计算爱心出现的位置
   const rect = avatarRef.value.getBoundingClientRect()
-  heartX.value = e.clientX - rect.left
-  heartY.value = e.clientY - rect.top - 20 // 稍微偏上一点
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+
+  pokeX.value = x
+  pokeY.value = y - 20
+
+  pokeEmoji.value = pickRandom(POKE_EMOJIS)
+  pokeQuoteText.value = pickRandom(POKE_QUOTES)
+  pokeQuoteX.value = x - 60
+  pokeQuoteY.value = y - 80
 
   isPoked.value = true
-  showHeart.value = true
+  showPokeEffect.value = true
+  showPokeQuote.value = true
 
-  // 恢复形变
+  const randomEmotion = pickRandom(POKE_EMOTIONS)
+  overrideEmotion.value = randomEmotion
+  emit('poke-emotion', randomEmotion)
+
   setTimeout(() => {
     isPoked.value = false
   }, 300)
   
-  // 移除爱心
   setTimeout(() => {
-    showHeart.value = false
-  }, 800)
+    showPokeEffect.value = false
+  }, 900)
+
+  setTimeout(() => {
+    showPokeQuote.value = false
+  }, 2200)
+
+  clearTimeout(overrideTimer)
+  overrideTimer = setTimeout(() => {
+    overrideEmotion.value = null
+  }, 2500)
 }
 
 // 根据角色和情绪状态动态计算图片路径
@@ -116,8 +163,8 @@ const normalizeEmotion = (emotion) => {
   return aliasMap[normalized] || normalized || 'happy'
 }
 
-const imageSrc = computed(() => {
-  const validEmotion = normalizeEmotion(props.emotion)
+const imageSrcFor = (emotion) => {
+  const validEmotion = normalizeEmotion(emotion)
   
   if (props.character === 'qian') {
     const qianMapping = {
@@ -169,9 +216,10 @@ const imageSrc = computed(() => {
     }
     return `/image/Asuka/${asukaMapping[validEmotion] || 'happy.png'}`
   }
-})
+}
 
-// 预加载两个角色的核心图片，防止切换时闪烁
+const displayImageSrc = computed(() => imageSrcFor(displayEmotion.value))
+const displayWebpSrc = computed(() => displayImageSrc.value.replace(/\.(png|jpe?g)$/i, '.webp'))
 const preloadImages = [
   '/image/Asuka/happy.webp',
   '/image/Asuka/happy.png',
@@ -180,10 +228,6 @@ const preloadImages = [
   '/image/qian/happy.webp',
   '/image/qian/happy.png'
 ]
-
-const webpSrc = computed(() => {
-  return imageSrc.value.replace(/\.(png|jpe?g)$/i, '.webp')
-})
 </script>
 
 <style scoped>
@@ -209,18 +253,40 @@ const webpSrc = computed(() => {
   transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.poke-heart {
+.poke-emoji {
   position: absolute;
-  font-size: 24px;
+  font-size: 28px;
   pointer-events: none;
   z-index: 20;
-  animation: floatUp 0.8s ease-out forwards;
+  animation: floatUp 0.9s ease-out forwards;
+}
+
+.poke-quote {
+  position: absolute;
+  background: rgba(124, 92, 255, 0.9);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+  z-index: 21;
+  white-space: nowrap;
+  animation: quoteFloat 2.2s ease-out forwards;
+  box-shadow: 0 4px 16px rgba(124, 92, 255, 0.3);
 }
 
 @keyframes floatUp {
   0% { opacity: 1; transform: translateY(0) scale(0.5); }
-  50% { transform: translateY(-30px) scale(1.2); }
-  100% { opacity: 0; transform: translateY(-50px) scale(1); }
+  50% { transform: translateY(-30px) scale(1.3); }
+  100% { opacity: 0; transform: translateY(-60px) scale(1); }
+}
+
+@keyframes quoteFloat {
+  0% { opacity: 0; transform: translateY(10px) scale(0.8); }
+  15% { opacity: 1; transform: translateY(0) scale(1); }
+  70% { opacity: 0.9; transform: translateY(-15px) scale(1); }
+  100% { opacity: 0; transform: translateY(-40px) scale(0.9); }
 }
 
 .avatar-inner {
